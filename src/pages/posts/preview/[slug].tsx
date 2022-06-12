@@ -1,12 +1,15 @@
-import { GetServerSideProps } from 'next';
-import { getSession } from 'next-auth/react';
+import { GetStaticProps } from 'next';
+import { useSession } from 'next-auth/react';
 import Head from 'next/head';
+import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { RichText } from 'prismic-dom';
-import { createClient } from '../../services/prismicio';
+import { useEffect } from 'react';
+import { createClient } from '../../../services/prismicio';
 
-import styles from './post.module.scss';
+import styles from '../post.module.scss';
 
-interface PostProps {
+interface PostPreviewProps {
   post: {
     slug: string;
     title: string;
@@ -15,7 +18,16 @@ interface PostProps {
   };
 }
 
-export default function Post({ post }: PostProps) {
+export default function PostPreview({ post }: PostPreviewProps) {
+  const { data } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (data?.activeSubscription) {
+      router.push(`/posts/${post.slug}`);
+    }
+  }, [data]);
+
   return (
     <>
       <Head>
@@ -27,33 +39,33 @@ export default function Post({ post }: PostProps) {
           <h1>{post.title}</h1>
           <time>{post.updatedAt}</time>
           <div
-            className={styles.postContent}
+            className={`${styles.postContent} ${styles.previewContent}`}
             dangerouslySetInnerHTML={{ __html: post.content }}
           ></div>
+          <div className={styles.continueReading}>
+            Wanna continue reading?
+            <Link href='/'>
+              <a>Subscribe now! 🤗</a>
+            </Link>
+          </div>
         </article>
       </main>
     </>
   );
 }
 
-export const getServerSideProps: GetServerSideProps = async ({
-  req,
+export const getStaticPaths = () => {
+  return {
+    paths: [],
+    fallback: 'blocking',
+  };
+};
+
+export const getStaticProps: GetStaticProps = async ({
   previewData,
   params,
 }) => {
-  const session = await getSession({ req });
   const { slug } = params;
-
-  console.log('SECAO POSTS', session);
-
-  if (!session?.activeSubscription) {
-    return {
-      redirect: {
-        destination: '/',
-        permanent: false,
-      },
-    };
-  }
 
   const client = createClient({ previewData });
 
@@ -64,7 +76,7 @@ export const getServerSideProps: GetServerSideProps = async ({
   const post = {
     slug,
     title: RichText.asText(response.data.title),
-    content: RichText.asHtml(response.data.content),
+    content: RichText.asHtml(response.data.content.splice(0, 3)),
     updatedAt: new Date(response.last_publication_date).toLocaleDateString(
       'pt-BR',
       {
@@ -77,5 +89,6 @@ export const getServerSideProps: GetServerSideProps = async ({
 
   return {
     props: { post },
+    redirect: 60 * 30, //30 minutes
   };
 };
