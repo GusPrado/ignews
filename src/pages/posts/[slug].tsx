@@ -41,11 +41,19 @@ export const getServerSideProps: GetServerSideProps = async ({
   previewData,
   params,
 }) => {
-  console.log(req);
   const session = await getSession({ req });
   const { slug } = params;
 
-  // if (!session) {}
+  console.log('SECAO POSTS', session);
+
+  if (!session.activeSubscription) {
+    return {
+      redirect: {
+        destination: '/',
+        permanent: false,
+      },
+    };
+  }
 
   const client = createClient({ previewData });
 
