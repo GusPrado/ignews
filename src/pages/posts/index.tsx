@@ -41,7 +41,7 @@ export default function Posts({ posts }: PostsProps) {
 }
 
 export const getStaticProps: GetStaticProps = async ({ previewData }) => {
-  const client = createClient({ previewData });
+  const client = createClient({});
 
   const response = await client.getAllByType('post');
 
